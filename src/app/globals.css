@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Using the Gambia Paper color as base, but slightly cleaner for screens */
+  --background: #F4F1DE;
+  --foreground: #264653;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-inter), sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar for Webkit */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #D4A373;
+  border-radius: 20px;
+}
+
+::selection {
+  background-color: #3E5F8A;
+  color: #F4F1DE;
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
