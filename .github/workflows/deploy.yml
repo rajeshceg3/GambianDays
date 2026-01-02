@@ -1,0 +1,89 @@
+name: Production Pipeline
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+env:
+  # Registry would be ghcr.io/username/repo or similar in a real setup
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    name: Code Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - name: Install Dependencies
+        # 'npm ci' is strictly for CI environments, using lockfile
+        run: npm ci
+
+      - name: Linting & Static Analysis
+        run: npm run lint
+
+      # Placeholder for Unit Tests
+      # If tests existed, they would run here.
+      # - name: Run Tests
+      #   run: npm run test
+
+      - name: Security Audit
+        # Fails if critical vulnerabilities are found in dependencies
+        # "audit-level" can be adjusted. Currently set to continue-on-error for demo purposes
+        # as we know there are existing vulnerabilities we documented.
+        run: npm audit --audit-level=critical
+        continue-on-error: true
+
+  build-and-push:
+    name: Build Container Image
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to the Container registry
+        # Only log in if not a PR, or if we want to push PR builds to a distinct tag
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
